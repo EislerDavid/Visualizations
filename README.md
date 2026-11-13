@@ -40,6 +40,25 @@ pohybu a barev, prolnutí počtu výsečí a tvaru), ne prolínáním dvou obraz
 | Harmony | 4, fraktálově | Lissajousova křivka 3 : 2 |
 | Supernova | 8 | výbuchy paprsků na každý úder |
 
+### Ambientní (Ambience)
+
+Měkké, plynoucí efekty bez zrcadlení – jeden engine (`Effects/Ambient`) se stejným principem presetů a
+plynulé proměny. Navíc umí proudění (vírové pole z gradientního šumu, chová se jako kapalina), drift,
+rozostření, vlnky na hladině, hvězdy, barevné palety a částice (kruhy na vodě, bubliny, kapky), které
+vznikají hlavně na údery. Preset v `AmbientPresets` uvádí jen parametry, které používá.
+
+| Preset | Co dělá |
+|---|---|
+| Swirl | kruhový průběh signálu ve víru, basy a údery ho rozpohybují |
+| Water | vlnící se hladina v modré paletě, pomalé proudění a vlnky |
+| Smoke | kouř stoupá od průběhu signálu u spodního okraje a rozplývá se |
+| Nebula | barevné koule podle pásem spektra, dlouhé stopy a hvězdy |
+| Aurora | polární záře – průběhy nahoře se roztékají v zeleno-fialové paletě |
+| Lava | lávová lampa – bubliny stoupají a slévají se v ohnivé paletě |
+| Warp | hyperprostor – hvězdy se rozmazávají do pruhů, údery přidají rychlost |
+| Ink | inkoust ve vodě – na údery kápnou barvy a proudění je rozmývá |
+| Ripples | kruhy na vodě – každý úder rozvlní hladinu z jiného místa |
+
 ### Ostatní
 
 | Název | Stav |
@@ -47,7 +66,6 @@ pohybu a barev, prolnutí počtu výsečí a tvaru), ne prolínáním dvou obraz
 | Bars and Waves: Bars | ✅ spektrum se sloupci a padajícími špičkami |
 | Bars and Waves: Scope | ✅ osciloskop – zářící průběh signálu |
 | Bars and Waves: Fire Storm | ✅ spektrum jako zdroj žáru, plameny stoupají a víří |
-| Ambience: Swirl | ✅ kruhový průběh signálu ve víru zpětné vazby, basy a údery ho rozpohybují |
 | Spikes: Starburst | ✅ hvězdice paprsků podle spektra, jádro pulzuje s údery |
 
 Názvy rodin odpovídají WMP; samotné animace jsou vlastní interpretace v jejich duchu.

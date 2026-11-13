@@ -24,12 +24,14 @@ internal sealed class KaleidoscopeVisualization(KaleidoscopePreset preset) : Fee
             return length(p) * vec2(cos(angle), sin(angle));
         }
 
-        // Vzorek v souřadnicích se středem uprostřed obrazu (výška = 1); mimo obraz je černo.
+        // Vzorek v souřadnicích se středem uprostřed obrazu (výška = 1). Mimo obraz nesmí být černá
+        // s ostrou hranou – rotace by ji zanášela do obrazu jako ostré rovné zlomy; okrajový pixel
+        // (ClampToEdge) proto plynule zhasne.
         vec3 sampleAt(sampler2D image, vec2 p, vec2 aspect)
         {
             vec2 uv = p / aspect + 0.5;
-            vec2 inside = step(vec2(0.0), uv) * step(uv, vec2(1.0));
-            return texture(image, uv).rgb * inside.x * inside.y;
+            vec2 d = max(max(-uv, uv - 1.0), 0.0);
+            return texture(image, uv).rgb * (1.0 - smoothstep(0.0, 0.03, max(d.x, d.y)));
         }
 
         mat2 rotation(float angle)
@@ -66,22 +68,26 @@ internal sealed class KaleidoscopeVisualization(KaleidoscopePreset preset) : Fee
             return c * k + cross(axis, c) * s + axis * dot(axis, c) * (1.0 - k);
         }
 
-        vec2 move(vec2 p)
+        // Pohyb u okrajů obrazu plynule utlumí, aby se nikdy nevzorkovalo mimo obraz – ostrá hrana obrazu
+        // by se jinak při otáčení zanášela dovnitř jako rovné zlomy.
+        vec2 move(vec2 p, vec2 aspect)
         {
             float r = length(p);
-            p = rotation(uRotation + uSwirl * max(1.0 - r, 0.0)) * p * uZoom;
-            return p + uWobble * vec2(sin(p.y * 7.0 + uTime * 0.9), cos(p.x * 6.0 - uTime * 0.7));
+            vec2 q = rotation(uRotation + uSwirl * max(1.0 - r, 0.0)) * p * uZoom;
+            q += uWobble * vec2(sin(q.y * 7.0 + uTime * 0.9), cos(q.x * 6.0 - uTime * 0.7));
+            vec2 distance = 0.5 * aspect - abs(p);
+            return p + (q - p) * smoothstep(0.0, 0.12, min(distance.x, distance.y));
         }
 
         void main()
         {
             vec2 aspect = vec2(uResolution.x / uResolution.y, 1.0);
             vec2 p = (vUv - 0.5) * aspect;
-            vec3 color = sampleAt(uPrevious, move(p), aspect);
+            vec3 color = sampleAt(uPrevious, move(p, aspect), aspect);
             if (uWarpFold > 0.001)
             {
-                vec3 folded = mix(sampleAt(uPrevious, move(fold(p, uSegmentsA)), aspect),
-                                  sampleAt(uPrevious, move(fold(p, uSegmentsB)), aspect), uSegmentMix);
+                vec3 folded = mix(sampleAt(uPrevious, move(fold(p, uSegmentsA), aspect), aspect),
+                                  sampleAt(uPrevious, move(fold(p, uSegmentsB), aspect), aspect), uSegmentMix);
                 color = mix(color, folded, uWarpFold);
             }
 
@@ -116,12 +122,7 @@ internal sealed class KaleidoscopeVisualization(KaleidoscopePreset preset) : Fee
         """;
 
     private readonly KaleidoscopeShapes _shapes = new();
-    private KaleidoscopePreset _from = preset;
-    private KaleidoscopePreset _to = preset;
-    private KaleidoscopePreset _current = preset;
-    private float _progress = 1f;
-    private float _duration = 1f;
-    private float _blend = 1f;
+    private readonly PresetMorph<KaleidoscopePreset> _morph = new(preset, KaleidoscopePreset.Lerp);
     private float _viewAngle;
     private GlowLine? _line;
 
@@ -148,28 +149,15 @@ internal sealed class KaleidoscopeVisualization(KaleidoscopePreset preset) : Fee
             return false;
         }
 
-        // Přerušená proměna: pokračovat z aktuálního mezistavu (počet výsečí a tvar od převažujícího presetu).
-        _from = _progress >= 1f ? _to
-            : _blend < 0.5f ? KaleidoscopePreset.Lerp(_from, _to, _blend)
-            : KaleidoscopePreset.Lerp(_to, _from, 1f - _blend);
-        _to = preset;
-        _duration = seconds;
-        _progress = seconds > 0f ? 0f : 1f;
-        _blend = _progress >= 1f ? 1f : 0f;
+        _morph.Start(preset, seconds);
         return true;
     }
 
     protected override void SetWarpUniforms(ShaderProgram warp, in FrameContext frame)
     {
         float dt = frame.DeltaTime;
-        if (_progress < 1f)
-        {
-            _progress = MathF.Min(1f, _progress + dt / _duration);
-        }
-
-        _blend = _progress * _progress * (3f - 2f * _progress);
-        _current = _progress >= 1f ? _to : KaleidoscopePreset.Lerp(_from, _to, _blend);
-        var p = _current;
+        _morph.Advance(dt);
+        var p = _morph.Current;
         var audio = frame.Audio;
         _viewAngle += p.ViewRotationSpeed * dt;
 
@@ -179,7 +167,7 @@ internal sealed class KaleidoscopeVisualization(KaleidoscopePreset preset) : Fee
         warp.Set("uWobble", p.Wobble);
         warp.Set("uDecay", MathF.Exp(-dt / p.DecayTime));
         warp.Set("uHueShift", p.HueSpeed * dt);
-        warp.Set("uWarpFold", (_from.FoldInWarp ? 1f - _blend : 0f) + (_to.FoldInWarp ? _blend : 0f));
+        warp.Set("uWarpFold", (_morph.From.FoldInWarp ? 1f - _morph.Blend : 0f) + (_morph.To.FoldInWarp ? _morph.Blend : 0f));
         SetSegments(warp);
     }
 
@@ -190,25 +178,25 @@ internal sealed class KaleidoscopeVisualization(KaleidoscopePreset preset) : Fee
             return;
         }
 
-        if (_blend < 1f)
+        if (_morph.Blend < 1f)
         {
-            _shapes.Draw(_line, _from, 1f - _blend, frame);
+            _shapes.Draw(_line, _morph.From, 1f - _morph.Blend, frame);
         }
 
-        _shapes.Draw(_line, _to, _blend, frame);
+        _shapes.Draw(_line, _morph.To, _morph.Blend, frame);
     }
 
     protected override void SetPresentUniforms(ShaderProgram present, in FrameContext frame)
     {
         SetSegments(present);
         present.Set("uViewAngle", _viewAngle);
-        present.Set("uSaturation", _current.Saturation);
+        present.Set("uSaturation", _morph.Current.Saturation);
     }
 
     private void SetSegments(ShaderProgram program)
     {
-        program.Set("uSegmentsA", (float)_from.Segments);
-        program.Set("uSegmentsB", (float)_to.Segments);
-        program.Set("uSegmentMix", _blend);
+        program.Set("uSegmentsA", (float)_morph.From.Segments);
+        program.Set("uSegmentsB", (float)_morph.To.Segments);
+        program.Set("uSegmentMix", _morph.Blend);
     }
 }

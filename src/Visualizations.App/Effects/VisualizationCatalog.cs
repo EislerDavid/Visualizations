@@ -1,3 +1,4 @@
+using Visualizations.App.Effects.Ambient;
 using Visualizations.App.Effects.Kaleidoscope;
 
 namespace Visualizations.App.Effects;
@@ -17,14 +18,18 @@ internal static class VisualizationCatalog
     /// <summary>Rodina kaleidoskopů – na ni je ve výchozím stavu laděné střídání a mix.</summary>
     public const string KaleidoscopeFamily = "Battery";
 
+    /// <summary>Rodina ambientních animací.</summary>
+    public const string AmbientFamily = "Ambience";
+
     public static IReadOnlyList<VisualizationInfo> All { get; } =
     [
         .. KaleidoscopePresets.All.Select(preset =>
             new VisualizationInfo(KaleidoscopeFamily, preset.Name, () => new KaleidoscopeVisualization(preset), preset)),
+        .. AmbientPresets.All.Select(preset =>
+            new VisualizationInfo(AmbientFamily, preset.Name, () => new AmbientVisualization(preset), preset)),
         new("Bars and Waves", "Bars", () => new BarsVisualization()),
         new("Bars and Waves", "Scope", () => new ScopeVisualization()),
         new("Bars and Waves", "Fire Storm", () => new FireStormVisualization()),
-        new("Ambience", "Swirl", () => new AmbienceSwirlVisualization()),
         new("Spikes", "Starburst", () => new SpikesStarburstVisualization()),
     ];
 
@@ -45,6 +50,10 @@ internal static class VisualizationCatalog
     }
 
     /// <summary>Popisek rodiny pro uživatele.</summary>
-    public static string FamilyLabel(string family) =>
-        family == KaleidoscopeFamily ? "Kaleidoskopy (Battery)" : family;
+    public static string FamilyLabel(string family) => family switch
+    {
+        KaleidoscopeFamily => "Kaleidoskopy (Battery)",
+        AmbientFamily => "Ambientní (Ambience)",
+        _ => family,
+    };
 }
