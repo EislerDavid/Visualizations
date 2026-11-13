@@ -1,0 +1,13 @@
+<Project>
+
+  <!-- Společné nastavení pro všechny projekty v řešení. -->
+  <PropertyGroup>
+    <!-- WASAPI (zachytávání zvuku) existuje jen na Windows. -->
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <LangVersion>latest</LangVersion>
+    <RootNamespace>$(MSBuildProjectName)</RootNamespace>
+  </PropertyGroup>
+
+</Project>

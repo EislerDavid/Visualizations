@@ -1,0 +1,6 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/Visualizations.App/Visualizations.App.csproj" />
+    <Project Path="src/Visualizations.Core/Visualizations.Core.csproj" />
+  </Folder>
+</Solution>
