@@ -101,6 +101,9 @@ public sealed class SpectrumAnalyzer
     /// <summary>Energie pásma (dB vůči plnoškálovému sinu), která odpovídá plnému sloupci.</summary>
     public float MaxDecibels { get; set; } = -12f;
 
+    /// <summary>Citlivost: o kolik dB se změřená energie zesílí (kladné = vyšší sloupce).</summary>
+    public float GainDecibels { get; set; }
+
     /// <summary>Zvýraznění výšek v dB na oktávu vůči 1 kHz (hudba má ve výškách méně energie).</summary>
     public float TiltDecibelsPerOctave { get; set; } = 2f;
 
@@ -143,7 +146,8 @@ public sealed class SpectrumAnalyzer
         for (int b = 0; b < BandCount; b++)
         {
             float decibels = 10f * MathF.Log10(MathF.Max(BandPower(b), 1e-12f))
-                + TiltDecibelsPerOctave * _bandOctavesFrom1k[b];
+                + TiltDecibelsPerOctave * _bandOctavesFrom1k[b]
+                + GainDecibels;
             float target = Math.Clamp((decibels - MinDecibels) / range, 0f, 1f);
             UpdateBand(b, target, attack, deltaTime);
         }

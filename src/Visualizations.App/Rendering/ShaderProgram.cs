@@ -35,6 +35,8 @@ internal sealed class ShaderProgram : IDisposable
 
     public void Use() => _gl.UseProgram(Handle);
 
+    public int GetUniformLocation(string name) => _gl.GetUniformLocation(Handle, name);
+
     public void Dispose() => _gl.DeleteProgram(Handle);
 
     private uint Compile(ShaderType type, string source)

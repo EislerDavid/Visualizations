@@ -1,6 +1,5 @@
 using Silk.NET.OpenGL;
 using Visualizations.App.Rendering;
-using Visualizations.Core.Analysis;
 
 namespace Visualizations.App.Effects;
 
@@ -54,9 +53,6 @@ internal sealed unsafe class BarsVisualization : IVisualization
     private uint _vao;
     private uint _vbo;
     private float[] _vertices = [];
-    private int _height = 1;
-
-    public string Name => "Bars";
 
     public void Load(GL gl)
     {
@@ -77,17 +73,19 @@ internal sealed unsafe class BarsVisualization : IVisualization
         gl.VertexAttribPointer(2, 1, VertexAttribPointerType.Float, false, stride, (void*)(3 * sizeof(float)));
     }
 
-    public void Resize(int width, int height) => _height = Math.Max(height, 1);
+    public void Resize(int width, int height)
+    {
+    }
 
-    public void Render(SpectrumAnalyzer audio, float deltaTime)
+    public void Render(in FrameContext frame)
     {
         if (_gl is null || _program is null)
         {
             return;
         }
 
-        var bands = audio.Bands;
-        var peaks = audio.Peaks;
+        var bands = frame.Audio.Bands;
+        var peaks = frame.Audio.Peaks;
         int quadCount = bands.Length * 2;
         int floatCount = quadCount * VerticesPerQuad * FloatsPerVertex;
         if (_vertices.Length != floatCount)
@@ -97,7 +95,7 @@ internal sealed unsafe class BarsVisualization : IVisualization
 
         float slot = 2f / bands.Length;
         float barWidth = slot * (1f - GapFraction);
-        float peakThickness = PeakThicknessPixels * 2f / _height;
+        float peakThickness = PeakThicknessPixels * 2f / frame.Target.Height;
         int offset = 0;
 
         for (int i = 0; i < bands.Length; i++)

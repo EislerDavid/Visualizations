@@ -16,20 +16,46 @@ Spotify.exe ──► Windows audio engine ──► WASAPI process loopback ─
   loopback celého výstupního zařízení.
 - **Analýza:** FFT (4096 vzorků, Hannovo okno) → 64 logaritmických pásem 40 Hz – 16 kHz v dB,
   okamžitý náběh, pozvolný pád a padající špičky.
-- **Vykreslování:** OpenGL 3.3 + GLSL shadery (efekty typu Ambience/Battery budou stát na zpětné vazbě framebufferu).
+- **Vykreslování:** OpenGL 3.3 + GLSL shadery. Každá animace kreslí do vlastní textury, kompozitor je
+  prolíná (přechody, mix dvou animací). Toolbar je Dear ImGui.
 
 ## Vizualizace
 
 | Název | Stav |
 |---|---|
-| Bars (Bars and Waves) | ✅ spektrum se sloupci a padajícími špičkami |
+| Bars and Waves: Bars | ✅ spektrum se sloupci a padajícími špičkami |
+| Bars and Waves: Scope | ✅ osciloskop – zářící průběh signálu |
+
+## Ovládání
+
+Lišta dole se ukáže při pohybu myši a po 3 s nečinnosti se schová (lze připnout).
+
+- **Výběr animace** – rozbalovací seznam, šipky ◀ ▶; změna animace je plynulé prolnutí.
+- **Střídat** – automatické přepínání po nastaveném intervalu, volitelně v náhodném pořadí.
+- **Mix** – druhá animace (B) přes první (A): crossfader, režim míchání (prolínání, sčítání, závoj,
+  zesvětlení, rozdíl) a automatický crossfader, který se sám přelévá mezi A a B.
+- **Citlivost** – zesílení ±3 dB.
+- **…** – zdroj zvuku (Spotify / celý výstup PC, znovu připojení), interval střídání, délka přechodu.
+
+| Klávesa | Akce |
+|---|---|
+| ← / → | předchozí / další animace |
+| 1 – 9 | animace podle čísla v nabídce |
+| ↑ / ↓ | citlivost ± 3 dB |
+| A | automatické střídání |
+| M | mix dvou animací |
+| F, F11, dvojklik | celá obrazovka (Esc zpět) |
+| T | připnout lištu |
+| F1 | nápověda |
+
+Nastavení (animace, citlivost, mix …) se při zavření ukládá do `%APPDATA%\Visualizations\settings.json`.
 
 ## Struktura
 
 | Projekt | Účel |
 |---|---|
 | `src/Visualizations.Core` | Zachytávání zvuku (NAudio.Wasapi), FFT, analýza spektra. Nezávislé na vykreslování. |
-| `src/Visualizations.App` | Okno a vykreslování vizualizací (Silk.NET – OpenGL + GLFW). |
+| `src/Visualizations.App` | Okno, vizualizace (`Effects`), mix a přechody (`Mixing`), OpenGL pomůcky (`Rendering`), toolbar (`Ui`). Silk.NET (OpenGL + GLFW) a Dear ImGui. |
 | `tests/Visualizations.Core.Tests` | Testy FFT, kruhového bufferu a analyzátoru (xUnit). |
 
 ## Požadavky
