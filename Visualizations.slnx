@@ -3,4 +3,7 @@
     <Project Path="src/Visualizations.App/Visualizations.App.csproj" />
     <Project Path="src/Visualizations.Core/Visualizations.Core.csproj" />
   </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Visualizations.Core.Tests/Visualizations.Core.Tests.csproj" />
+  </Folder>
 </Solution>

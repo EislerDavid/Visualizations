@@ -11,21 +11,30 @@ Spotify neumožňuje oficiální pluginy, proto aplikace běží samostatně ved
 Spotify.exe ──► Windows audio engine ──► WASAPI process loopback ──► FFT / analýza ──► OpenGL okno
 ```
 
-- **Zachytávání zvuku:** WASAPI *process loopback* (Windows 10 build 20348+ / Windows 11) zachytí jen zvuk
-  procesu Spotify a jeho podprocesů. Na starších systémech se použije klasický loopback celého výstupního zařízení.
-- **Analýza:** FFT spektrum + waveform, detekce beatů, vyhlazení – data pro jednotlivé efekty.
-- **Vykreslování:** OpenGL + GLSL shadery (efekty typu Ambience/Battery stojí na zpětné vazbě framebufferu).
+- **Zachytávání zvuku:** WASAPI *process loopback* zachytí jen zvuk Spotify – cílí na kořenový proces
+  `Spotify.exe` a zahrne i jeho podprocesy (zvuk vydává jeden z nich). Když Spotify neběží, použije se
+  loopback celého výstupního zařízení.
+- **Analýza:** FFT (4096 vzorků, Hannovo okno) → 64 logaritmických pásem 40 Hz – 16 kHz v dB,
+  okamžitý náběh, pozvolný pád a padající špičky.
+- **Vykreslování:** OpenGL 3.3 + GLSL shadery (efekty typu Ambience/Battery budou stát na zpětné vazbě framebufferu).
+
+## Vizualizace
+
+| Název | Stav |
+|---|---|
+| Bars (Bars and Waves) | ✅ spektrum se sloupci a padajícími špičkami |
 
 ## Struktura
 
 | Projekt | Účel |
 |---|---|
-| `src/Visualizations.Core` | Zachytávání zvuku (NAudio.Wasapi), FFT, analýza signálu. Nezávislé na vykreslování. |
+| `src/Visualizations.Core` | Zachytávání zvuku (NAudio.Wasapi), FFT, analýza spektra. Nezávislé na vykreslování. |
 | `src/Visualizations.App` | Okno a vykreslování vizualizací (Silk.NET – OpenGL + GLFW). |
+| `tests/Visualizations.Core.Tests` | Testy FFT, kruhového bufferu a analyzátoru (xUnit). |
 
 ## Požadavky
 
-- Windows 10 (build 20348+) nebo Windows 11 – kvůli zachytávání zvuku jednoho procesu
+- Windows 11 nebo Windows 10 verze 2004 (build 19041) a novější – kvůli zachytávání zvuku jednoho procesu
 - .NET SDK 10
 - Visual Studio 2026 nebo `dotnet` CLI
 
@@ -33,5 +42,8 @@ Spotify.exe ──► Windows audio engine ──► WASAPI process loopback ─
 
 ```powershell
 dotnet build
-dotnet run --project src/Visualizations.App
+dotnet test
+dotnet run --project src/Visualizations.App                       # zvuk Spotify
+dotnet run --project src/Visualizations.App -- --system           # celý výstup PC
+dotnet run --project src/Visualizations.App -- --process firefox  # jiná aplikace
 ```
