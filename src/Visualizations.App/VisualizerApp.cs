@@ -281,6 +281,11 @@ internal sealed class VisualizerApp : IDisposable
 
         _imgui.Update(deltaTime);
         _toolbar.Draw(deltaTime, wanted: Settings.ToolbarPinned || _time - _lastActivity < ToolbarIdleSeconds);
+
+        // Výběr animace v toolbaru ji vytvoří uprostřed snímku a ta si nastaví vlastní framebuffery;
+        // ImGui musí kreslit zpátky do okna.
+        _gl.BindFramebuffer(FramebufferTarget.Framebuffer, 0);
+        _gl.Viewport(0, 0, (uint)size.X, (uint)size.Y);
         _imgui.Render();
 
         if (_mouse is not null)

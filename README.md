@@ -25,6 +25,16 @@ Spotify.exe ──► Windows audio engine ──► WASAPI process loopback ─
 |---|---|
 | Bars and Waves: Bars | ✅ spektrum se sloupci a padajícími špičkami |
 | Bars and Waves: Scope | ✅ osciloskop – zářící průběh signálu |
+| Bars and Waves: Fire Storm | ✅ spektrum jako zdroj žáru, plameny stoupají a víří |
+| Ambience: Swirl | ✅ kruhový průběh signálu ve víru zpětné vazby, basy a údery ho rozpohybují |
+| Spikes: Starburst | ✅ hvězdice paprsků podle spektra, jádro pulzuje s údery |
+
+Názvy rodin odpovídají WMP; samotné animace jsou vlastní interpretace v jejich duchu.
+
+Většina efektů WMP stojí na **zpětné vazbě**: nový snímek vzniká z předchozího (otočení, přiblížení,
+posun, útlum) a přikreslí se do něj čerstvý obsah podle zvuku. Základ je v `FeedbackVisualization`;
+efekty čistě ve fragment shaderu dědí z `ShaderVisualization`. Shadery dostávají spektrum jako texturu,
+úrovně basů / středů / výšek a detekci úderů (kopáků).
 
 ## Ovládání
 

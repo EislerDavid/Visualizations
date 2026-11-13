@@ -15,6 +15,9 @@ internal static class VisualizationCatalog
     [
         new("Bars and Waves", "Bars", () => new BarsVisualization()),
         new("Bars and Waves", "Scope", () => new ScopeVisualization()),
+        new("Bars and Waves", "Fire Storm", () => new FireStormVisualization()),
+        new("Ambience", "Swirl", () => new AmbienceSwirlVisualization()),
+        new("Spikes", "Starburst", () => new SpikesStarburstVisualization()),
     ];
 
     public static int IndexOf(string? name)

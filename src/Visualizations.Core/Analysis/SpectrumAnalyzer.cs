@@ -19,6 +19,7 @@ public sealed class SpectrumAnalyzer
     private readonly int[] _bandFirstBin;
     private readonly int[] _bandEndBin;
     private readonly float[] _bandCenterBin;
+    private readonly float[] _bandCenterHz;
     private readonly float[] _bandWidthInBins;
     private readonly float[] _bandOctavesFrom1k;
 
@@ -60,6 +61,7 @@ public sealed class SpectrumAnalyzer
         _bandFirstBin = new int[bandCount];
         _bandEndBin = new int[bandCount];
         _bandCenterBin = new float[bandCount];
+        _bandCenterHz = new float[bandCount];
         _bandWidthInBins = new float[bandCount];
         _bandOctavesFrom1k = new float[bandCount];
         float ratio = maxFrequency / minFrequency;
@@ -71,6 +73,7 @@ public sealed class SpectrumAnalyzer
             _bandFirstBin[b] = (int)MathF.Ceiling(low / binHz);
             _bandEndBin[b] = Math.Min((int)MathF.Ceiling(high / binHz), _power.Length);
             _bandCenterBin[b] = center / binHz;
+            _bandCenterHz[b] = center;
             _bandWidthInBins[b] = (high - low) / binHz;
             _bandOctavesFrom1k[b] = MathF.Log2(center / 1000f);
         }
@@ -91,6 +94,9 @@ public sealed class SpectrumAnalyzer
 
     /// <summary>Padající špičky pásem, 0–1.</summary>
     public ReadOnlySpan<float> Peaks => _peaks;
+
+    /// <summary>Střední frekvence pásma v Hz (geometrický střed jeho hranic).</summary>
+    public float BandCenterFrequency(int band) => _bandCenterHz[band];
 
     // Výchozí hodnoty jsou naladěné na nahrávce hudby ze Spotify (normalizace hlasitosti zapnutá):
     // sloupce v průměru do poloviny výšky, třepotání mezi snímky ~40 % původní verze.

@@ -1,3 +1,4 @@
+using System.Numerics;
 using Silk.NET.OpenGL;
 
 namespace Visualizations.App.Rendering;
@@ -6,6 +7,7 @@ namespace Visualizations.App.Rendering;
 internal sealed class ShaderProgram : IDisposable
 {
     private readonly GL _gl;
+    private readonly Dictionary<string, int> _uniformLocations = [];
 
     public ShaderProgram(GL gl, string vertexSource, string fragmentSource)
     {
@@ -35,7 +37,25 @@ internal sealed class ShaderProgram : IDisposable
 
     public void Use() => _gl.UseProgram(Handle);
 
-    public int GetUniformLocation(string name) => _gl.GetUniformLocation(Handle, name);
+    /// <summary>Poloha uniformu (s mezipamětí); −1, pokud ho shader nepoužívá – nastavení se pak ignoruje.</summary>
+    public int GetUniformLocation(string name)
+    {
+        if (!_uniformLocations.TryGetValue(name, out int location))
+        {
+            location = _gl.GetUniformLocation(Handle, name);
+            _uniformLocations[name] = location;
+        }
+
+        return location;
+    }
+
+    public void Set(string name, int value) => _gl.Uniform1(GetUniformLocation(name), value);
+
+    public void Set(string name, float value) => _gl.Uniform1(GetUniformLocation(name), value);
+
+    public void Set(string name, Vector2 value) => _gl.Uniform2(GetUniformLocation(name), value.X, value.Y);
+
+    public void Set(string name, Vector3 value) => _gl.Uniform3(GetUniformLocation(name), value.X, value.Y, value.Z);
 
     public void Dispose() => _gl.DeleteProgram(Handle);
 
