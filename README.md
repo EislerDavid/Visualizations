@@ -21,6 +21,27 @@ Spotify.exe ──► Windows audio engine ──► WASAPI process loopback ─
 
 ## Vizualizace
 
+### Kaleidoskopy (Battery)
+
+Jeden kaleidoskopický engine (`Effects/Kaleidoscope`), presety jsou jen sady parametrů – nový preset je
+nový řádek v `KaleidoscopePresets`. Mezi sebou kaleidoskopy přecházejí **plynulou proměnou** (interpolace
+pohybu a barev, prolnutí počtu výsečí a tvaru), ne prolínáním dvou obrazů.
+
+| Preset | Výseče | Co kreslí |
+|---|---|---|
+| Kaleidoscope | 6 | průběh signálu přes střed |
+| Mandala | 8, fraktálově | růžice se 4 lístky podle spektra |
+| Stardust | 12 | body na oběžných drahách |
+| Spiral | 5 | vlnící se spirála, silné víření |
+| Crystal | 3, fraktálově | hvězda – cípy podle basů a výšek |
+| Web | 10 | paprsky podle spektra, obraz se smršťuje |
+| Lotus | 7, fraktálově | růžice se 7 lístky, pomalá |
+| Tunnel | 6 | kruh, z každého úderu odletí prstenec |
+| Harmony | 4, fraktálově | Lissajousova křivka 3 : 2 |
+| Supernova | 8 | výbuchy paprsků na každý úder |
+
+### Ostatní
+
 | Název | Stav |
 |---|---|
 | Bars and Waves: Bars | ✅ spektrum se sloupci a padajícími špičkami |
@@ -40,17 +61,22 @@ efekty čistě ve fragment shaderu dědí z `ShaderVisualization`. Shadery dost�
 
 Lišta dole se ukáže při pohybu myši a po 3 s nečinnosti se schová (lze připnout).
 
-- **Výběr animace** – rozbalovací seznam, šipky ◀ ▶; změna animace je plynulé prolnutí.
-- **Střídat** – automatické přepínání po nastaveném intervalu, volitelně v náhodném pořadí.
-- **Mix** – druhá animace (B) přes první (A): crossfader, režim míchání (prolínání, sčítání, závoj,
-  zesvětlení, rozdíl) a automatický crossfader, který se sám přelévá mezi A a B.
+- **Výběr animace** – rozbalovací seznam seskupený podle rodin (nahoře „Náhodně“), šipky ◀ ▶.
+- **Střídat** – automatické přepínání po nastaveném intervalu; ve výchozím stavu **jen mezi kaleidoskopy**
+  a **na úder** (po uplynutí intervalu počká na nejbližší kopák). Výběr rodiny, interval, náhodné pořadí
+  a délka přechodu jsou v nabídce „…“.
+- **Mix** – druhá animace (B) přes první (A): crossfader, režimy prolínání, sčítání, závoj, zesvětlení,
+  rozdíl a pro kaleidoskopy **Kruh** (B se rozpíná ze středu) a **Výseče** (B prorůstá 12 výsečemi).
+  **Automatický crossfader** se sám přelévá mezi A a B a s volbou **Obměňovat** vymění animaci, která je
+  právě úplně skrytá, za jinou z výběru – každý návrat crossfaderu tak přinese novou kombinaci.
 - **Citlivost** – zesílení ±3 dB.
-- **…** – zdroj zvuku (Spotify / celý výstup PC, znovu připojení), interval střídání, délka přechodu.
+- **…** – zdroj zvuku (Spotify / celý výstup PC, znovu připojení) a nastavení střídání.
 
 | Klávesa | Akce |
 |---|---|
 | ← / → | předchozí / další animace |
-| 1 – 9 | animace podle čísla v nabídce |
+| 1 – 9 | animace podle čísla v nabídce (kaleidoskopy jsou první) |
+| R | náhodná animace z výběru pro střídání |
 | ↑ / ↓ | citlivost ± 3 dB |
 | A | automatické střídání |
 | M | mix dvou animací |

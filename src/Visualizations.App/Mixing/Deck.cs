@@ -44,6 +44,15 @@ internal sealed class Deck : IDisposable
             return;
         }
 
+        // Animace, které to umí (kaleidoskopy mezi sebou), se plynule promění bez druhého obrazu.
+        var info = VisualizationCatalog.All[index];
+        if (_current?.Visualization is IMorphable morphable && morphable.TryMorphTo(info, TransitionSeconds))
+        {
+            _current.Info = info;
+            Index = index;
+            return;
+        }
+
         // Přerušený přechod: dosud odcházející animace zmizí, z aktuální se stane odcházející.
         _outgoing?.Dispose();
         _outgoing = null;
@@ -58,7 +67,7 @@ internal sealed class Deck : IDisposable
             _progress = 1f;
         }
 
-        _current = new Slot(_gl, VisualizationCatalog.All[index], _width, _height);
+        _current = new Slot(_gl, info, _width, _height);
         Index = index;
     }
 
@@ -127,7 +136,7 @@ internal sealed class Deck : IDisposable
             Target = new RenderTarget(gl, width, height);
         }
 
-        public VisualizationInfo Info { get; }
+        public VisualizationInfo Info { get; set; }
 
         public IVisualization Visualization { get; }
 

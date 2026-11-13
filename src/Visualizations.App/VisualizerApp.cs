@@ -24,6 +24,12 @@ internal sealed class VisualizerApp : IDisposable
 
     private const double ToolbarIdleSeconds = 3.0;
 
+    /// <summary>Jak dlouho po uplynutí intervalu střídání čekat na úder, než se přepne i bez něj.</summary>
+    private const float MaxBeatWaitSeconds = 2f;
+
+    /// <summary>Pod touto vzdáleností od kraje crossfaderu je druhý deck považován za úplně skrytý.</summary>
+    private const float HiddenThreshold = 0.01f;
+
     private readonly IWindow _window;
     private readonly Random _random = new();
 
@@ -43,6 +49,8 @@ internal sealed class VisualizerApp : IDisposable
     private float _autoSwitchElapsed;
     private float _crossfadePhase;
     private bool _autoCrossfadeRunning;
+    private bool _hiddenARefreshed;
+    private bool _hiddenBRefreshed;
     private bool _fullscreen;
     private Vector2D<int> _windowedPosition;
     private Vector2D<int> _windowedSize;
@@ -90,19 +98,7 @@ internal sealed class VisualizerApp : IDisposable
 
     public void Run() => _window.Run();
 
-    public void SelectAnimation(int index)
-    {
-        if (_deckA is null || (uint)index >= (uint)VisualizationCatalog.All.Count)
-        {
-            return;
-        }
-
-        _deckA.TransitionSeconds = Settings.TransitionSeconds;
-        _deckA.Select(index);
-        Settings.Animation = VisualizationCatalog.All[index].Name;
-        _autoSwitchElapsed = 0f;
-        _window.Title = $"Visualizations – {Settings.Animation}";
-    }
+    public void SelectAnimation(int index) => SelectAnimation(index, instant: false);
 
     public void NextAnimation() => SelectAnimation((AnimationIndex + 1) % VisualizationCatalog.All.Count);
 
@@ -112,23 +108,28 @@ internal sealed class VisualizerApp : IDisposable
         SelectAnimation((AnimationIndex - 1 + count) % count);
     }
 
-    public void RandomAnimation()
-    {
-        int count = VisualizationCatalog.All.Count;
-        int index = count < 2 ? 0 : (AnimationIndex + 1 + _random.Next(count - 1)) % count;
-        SelectAnimation(index);
-    }
+    /// <summary>Náhodná animace z výběru pro střídání (jiná než A i B).</summary>
+    public void RandomAnimation() => SelectAnimation(PickRandom(AnimationIndex, MixAnimationIndex));
 
-    public void SelectMixAnimation(int index)
+    public void SelectMixAnimation(int index) => SelectMixAnimation(index, instant: false);
+
+    /// <summary>Náhodná animace pro deck B z výběru pro střídání (jiná než A i B).</summary>
+    public void RandomMixAnimation() => SelectMixAnimation(PickRandom(AnimationIndex, MixAnimationIndex));
+
+    /// <summary>Indexy animací, ze kterých vybírá střídání, náhodný výběr a obměna v mixu.</summary>
+    public List<int> SwitchCandidates()
     {
-        if (_deckB is null || (uint)index >= (uint)VisualizationCatalog.All.Count)
+        var all = VisualizationCatalog.All;
+        var candidates = new List<int>();
+        for (int i = 0; i < all.Count; i++)
         {
-            return;
+            if (string.IsNullOrEmpty(Settings.AutoSwitchFamily) || all[i].Family == Settings.AutoSwitchFamily)
+            {
+                candidates.Add(i);
+            }
         }
 
-        _deckB.TransitionSeconds = Settings.TransitionSeconds;
-        _deckB.Select(index);
-        Settings.MixAnimation = VisualizationCatalog.All[index].Name;
+        return candidates.Count > 0 ? candidates : Enumerable.Range(0, all.Count).ToList();
     }
 
     public void ToggleMix()
@@ -179,6 +180,53 @@ internal sealed class VisualizerApp : IDisposable
     {
         _capture.Dispose();
         _window.Dispose();
+    }
+
+    /// <param name="instant">Bez přechodu – pro deck, který je právě úplně skrytý.</param>
+    private void SelectAnimation(int index, bool instant)
+    {
+        if (_deckA is null || (uint)index >= (uint)VisualizationCatalog.All.Count)
+        {
+            return;
+        }
+
+        _deckA.TransitionSeconds = instant ? 0f : Settings.TransitionSeconds;
+        _deckA.Select(index);
+        Settings.Animation = VisualizationCatalog.All[index].Name;
+        _autoSwitchElapsed = 0f;
+        _window.Title = $"Visualizations – {Settings.Animation}";
+    }
+
+    private void SelectMixAnimation(int index, bool instant)
+    {
+        if (_deckB is null || (uint)index >= (uint)VisualizationCatalog.All.Count)
+        {
+            return;
+        }
+
+        _deckB.TransitionSeconds = instant ? 0f : Settings.TransitionSeconds;
+        _deckB.Select(index);
+        Settings.MixAnimation = VisualizationCatalog.All[index].Name;
+    }
+
+    /// <summary>Náhodný kandidát ze <see cref="SwitchCandidates"/>, pokud možno různý od <paramref name="exclude"/>.</summary>
+    private int PickRandom(params int[] exclude)
+    {
+        var candidates = SwitchCandidates();
+        var allowed = candidates.Where(i => !exclude.Contains(i)).ToList();
+        if (allowed.Count == 0)
+        {
+            allowed = candidates.Where(i => i != exclude[0]).ToList();
+        }
+
+        return allowed.Count > 0 ? allowed[_random.Next(allowed.Count)] : candidates[0];
+    }
+
+    /// <summary>Další animace v pořadí, ale jen z výběru pro střídání.</summary>
+    private void SwitchToNextCandidate()
+    {
+        var candidates = SwitchCandidates();
+        SelectAnimation(candidates.FirstOrDefault(i => i > AnimationIndex, candidates[0]));
     }
 
     private AudioCapture StartCapture(CaptureTarget target)
@@ -277,7 +325,13 @@ internal sealed class VisualizerApp : IDisposable
         var size = _window.FramebufferSize;
         _gl.BindFramebuffer(FramebufferTarget.Framebuffer, 0);
         _gl.Viewport(0, 0, (uint)size.X, (uint)size.Y);
-        _compositor.Draw(textureA, textureB, mixing ? Settings.Crossfader : 0f, mixing ? Settings.MixMode : BlendMode.Crossfade);
+        _compositor.Draw(
+            textureA,
+            textureB,
+            mixing ? Settings.Crossfader : 0f,
+            mixing ? Settings.MixMode : BlendMode.Crossfade,
+            aspect: (float)size.X / Math.Max(size.Y, 1),
+            time: (float)_time);
 
         _imgui.Update(deltaTime);
         _toolbar.Draw(deltaTime, wanted: Settings.ToolbarPinned || _time - _lastActivity < ToolbarIdleSeconds);
@@ -303,7 +357,11 @@ internal sealed class VisualizerApp : IDisposable
         if (Settings.AutoSwitch)
         {
             _autoSwitchElapsed += deltaTime;
-            if (_autoSwitchElapsed >= Settings.AutoSwitchSeconds)
+            bool due = _autoSwitchElapsed >= Settings.AutoSwitchSeconds;
+            bool onBeat = !Settings.AutoSwitchOnBeat
+                || _audio.Beat >= 1f
+                || _autoSwitchElapsed >= Settings.AutoSwitchSeconds + MaxBeatWaitSeconds;
+            if (due && onBeat)
             {
                 if (Settings.AutoSwitchRandom)
                 {
@@ -311,7 +369,7 @@ internal sealed class VisualizerApp : IDisposable
                 }
                 else
                 {
-                    NextAnimation();
+                    SwitchToNextCandidate();
                 }
 
                 _autoSwitchElapsed = 0f;
@@ -333,10 +391,42 @@ internal sealed class VisualizerApp : IDisposable
 
             _crossfadePhase += deltaTime / MathF.Max(Settings.AutoCrossfadeSeconds, 0.1f);
             Settings.Crossfader = 0.5f - 0.5f * MathF.Cos(2f * MathF.PI * _crossfadePhase);
+            if (Settings.AutoMixRefresh)
+            {
+                RefreshHiddenDeck();
+            }
         }
         else
         {
             _autoCrossfadeRunning = false;
+        }
+    }
+
+    /// <summary>
+    /// Automatický mix jako DJ: deck, který crossfader právě úplně skryl, dostane jinou animaci,
+    /// takže při návratu crossfaderu přijde nová kombinace.
+    /// </summary>
+    private void RefreshHiddenDeck()
+    {
+        float crossfader = Settings.Crossfader;
+        if (crossfader < HiddenThreshold && !_hiddenBRefreshed)
+        {
+            SelectMixAnimation(PickRandom(AnimationIndex, MixAnimationIndex), instant: true);
+            _hiddenBRefreshed = true;
+        }
+        else if (crossfader > 0.5f)
+        {
+            _hiddenBRefreshed = false;
+        }
+
+        if (crossfader > 1f - HiddenThreshold && !_hiddenARefreshed)
+        {
+            SelectAnimation(PickRandom(AnimationIndex, MixAnimationIndex), instant: true);
+            _hiddenARefreshed = true;
+        }
+        else if (crossfader < 0.5f)
+        {
+            _hiddenARefreshed = false;
         }
     }
 
@@ -353,14 +443,14 @@ internal sealed class VisualizerApp : IDisposable
             return;
         }
 
-        // B má smysl jen jako jiná animace než A; když by se shodovaly, vezme se následující.
+        // B má smysl jen jako jiná animace než A; když by se shodovaly, vybere se jiná z výběru pro střídání.
         int index = VisualizationCatalog.IndexOf(Settings.MixAnimation);
         if (index < 0 || index == AnimationIndex)
         {
-            index = (AnimationIndex + 1) % VisualizationCatalog.All.Count;
+            index = PickRandom(AnimationIndex);
         }
 
-        SelectMixAnimation(index);
+        SelectMixAnimation(index, instant: true);
     }
 
     private void OnKeyDown(IKeyboard keyboard, Key key, int scancode)
@@ -387,6 +477,9 @@ internal sealed class VisualizerApp : IDisposable
                 break;
             case >= Key.Number1 and <= Key.Number9:
                 SelectAnimation(key - Key.Number1);
+                break;
+            case Key.R:
+                RandomAnimation();
                 break;
             case Key.A:
                 Settings.AutoSwitch = !Settings.AutoSwitch;

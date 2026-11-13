@@ -1,6 +1,9 @@
 namespace Visualizations.App.Mixing;
 
-/// <summary>Jak se při mixu skládají dvě animace. Pořadí odpovídá <c>uMode</c> v kompozitoru.</summary>
+/// <summary>
+/// Jak se při mixu skládají dvě animace. Pořadí odpovídá <c>uMode</c> v kompozitoru.
+/// Ve všech režimech platí: crossfader 0 = jen A, 1 = jen B.
+/// </summary>
 internal enum BlendMode
 {
     Crossfade,
@@ -8,6 +11,8 @@ internal enum BlendMode
     Screen,
     Lighten,
     Difference,
+    Radial,
+    Wedges,
 }
 
 internal static class BlendModeExtensions
@@ -19,6 +24,8 @@ internal static class BlendModeExtensions
         BlendMode.Screen => "Závoj",
         BlendMode.Lighten => "Zesvětlení",
         BlendMode.Difference => "Rozdíl",
+        BlendMode.Radial => "Kruh",
+        BlendMode.Wedges => "Výseče",
         _ => mode.ToString(),
     };
 
@@ -29,6 +36,8 @@ internal static class BlendModeExtensions
         BlendMode.Screen => "Jako dva projektory na jedno plátno – jemnější než sčítání.",
         BlendMode.Lighten => "V každém bodě vyhraje jasnější z obou animací.",
         BlendMode.Difference => "Rozdíl barev – psychedelické negativní prolnutí.",
+        BlendMode.Radial => "B se rozpíná ze středu jako kruh – drží středovou symetrii kaleidoskopů.",
+        BlendMode.Wedges => "B prorůstá dvanácti výsečemi od jejich středu – kaleidoskop v kaleidoskopu.",
         _ => string.Empty,
     };
 }

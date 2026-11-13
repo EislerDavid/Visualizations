@@ -10,20 +10,30 @@ namespace Visualizations.App;
 /// </summary>
 internal sealed class Settings
 {
-    public string Animation = "Bars and Waves: Bars";
+    public string Animation = "Battery: Kaleidoscope";
     public float Sensitivity;
 
     public bool AutoSwitch;
     public float AutoSwitchSeconds = 20f;
     public bool AutoSwitchRandom;
-    public float TransitionSeconds = 1.5f;
+
+    /// <summary>Rodina, ze které vybírá střídání, náhodný výběr a obměna v mixu; prázdné = všechny animace.</summary>
+    public string AutoSwitchFamily = "Battery";
+
+    /// <summary>Po uplynutí intervalu přepnout až na nejbližší úder.</summary>
+    public bool AutoSwitchOnBeat = true;
+
+    public float TransitionSeconds = 2.5f;
 
     public bool MixEnabled;
-    public string MixAnimation = "Bars and Waves: Scope";
+    public string MixAnimation = "Battery: Mandala";
     public float Crossfader = 0.5f;
     public BlendMode MixMode = BlendMode.Screen;
     public bool AutoCrossfade;
     public float AutoCrossfadeSeconds = 12f;
+
+    /// <summary>Při automatickém crossfaderu vyměnit úplně skrytou animaci za jinou.</summary>
+    public bool AutoMixRefresh = true;
 
     public bool ToolbarPinned;
 

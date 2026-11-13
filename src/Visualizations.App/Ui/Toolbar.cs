@@ -28,6 +28,7 @@ internal sealed class Toolbar(VisualizerApp app)
     [
         ("← / →", "předchozí / další animace"),
         ("1 – 9", "animace podle čísla v nabídce"),
+        ("R", "náhodná animace (z výběru pro střídání)"),
         ("↑ / ↓", "citlivost ± 3 dB"),
         ("A", "automatické střídání animací"),
         ("M", "mix dvou animací"),
@@ -94,8 +95,8 @@ internal sealed class Toolbar(VisualizerApp app)
 
         Tooltip("Předchozí animace (←)");
         ImGui.SameLine();
-        AnimationCombo("##animation", app.AnimationIndex, app.SelectAnimation, AnimationComboWidth, numbered: true);
-        Tooltip("Výběr animace (klávesy 1–9)");
+        AnimationCombo("##animation", app.AnimationIndex, app.SelectAnimation, app.RandomAnimation, AnimationComboWidth, numbered: true);
+        Tooltip("Výběr animace (klávesy 1–9, R náhodně)");
         ImGui.SameLine();
         if (ImGui.ArrowButton("##next", ImGuiDir.Right))
         {
@@ -106,7 +107,8 @@ internal sealed class Toolbar(VisualizerApp app)
 
         Divider();
         ImGui.Checkbox("Střídat", ref settings.AutoSwitch);
-        Tooltip($"Automaticky přepínat animace každých {settings.AutoSwitchSeconds:0} s (A).\nInterval a pořadí se nastavují v nabídce „…“.");
+        Tooltip($"Automaticky přepínat animace – {FamilyFilterLabel(settings.AutoSwitchFamily)} – každých {settings.AutoSwitchSeconds:0} s"
+            + $"{(settings.AutoSwitchOnBeat ? " na úder" : string.Empty)} (A).\nVýběr, interval a pořadí se nastavují v nabídce „…“.");
 
         Divider();
         if (ToggleButton("Mix", settings.MixEnabled))
@@ -206,11 +208,33 @@ internal sealed class Toolbar(VisualizerApp app)
         ImGui.SeparatorText("Střídání animací");
         ImGui.Checkbox("Automaticky střídat (A)", ref settings.AutoSwitch);
         ImGui.SetNextItemWidth(200f);
+        if (ImGui.BeginCombo("Vybírat z", FamilyFilterLabel(settings.AutoSwitchFamily)))
+        {
+            if (ImGui.Selectable(FamilyFilterLabel(string.Empty), settings.AutoSwitchFamily.Length == 0))
+            {
+                settings.AutoSwitchFamily = string.Empty;
+            }
+
+            foreach (string family in VisualizationCatalog.Families)
+            {
+                if (ImGui.Selectable(VisualizationCatalog.FamilyLabel(family), settings.AutoSwitchFamily == family))
+                {
+                    settings.AutoSwitchFamily = family;
+                }
+            }
+
+            ImGui.EndCombo();
+        }
+
+        Tooltip("Ze kterých animací vybírá střídání, náhodný výběr (R) i obměna v mixu");
+        ImGui.SetNextItemWidth(200f);
         ImGui.SliderFloat("Interval", ref settings.AutoSwitchSeconds, 5f, 120f, "%.0f s");
         ImGui.Checkbox("Náhodné pořadí", ref settings.AutoSwitchRandom);
+        ImGui.Checkbox("Přepínat na úder", ref settings.AutoSwitchOnBeat);
+        Tooltip("Po uplynutí intervalu počká na nejbližší úder (nejdéle 2 s)");
         ImGui.SetNextItemWidth(200f);
         ImGui.SliderFloat("Délka přechodu", ref settings.TransitionSeconds, 0f, 5f, "%.1f s");
-        Tooltip("Jak dlouho se stará animace prolíná do nové (0 = střih)");
+        Tooltip("Kaleidoskopy se mezi sebou plynule promění, ostatní animace se prolnou (0 = střih)");
 
         ImGui.SeparatorText("Lišta");
         ImGui.Checkbox("Připnout – neschovávat (T)", ref settings.ToolbarPinned);
@@ -238,7 +262,7 @@ internal sealed class Toolbar(VisualizerApp app)
         ImGui.TextUnformatted(app.AnimationIndex >= 0 ? VisualizationCatalog.All[app.AnimationIndex].Name : "—");
 
         MixerLabel("B");
-        AnimationCombo("##mixAnimation", app.MixAnimationIndex, app.SelectMixAnimation, MixerControlWidth, numbered: false);
+        AnimationCombo("##mixAnimation", app.MixAnimationIndex, app.SelectMixAnimation, app.RandomMixAnimation, MixerControlWidth, numbered: false);
 
         MixerLabel("Crossfader");
         ImGui.SetNextItemWidth(MixerControlWidth);
@@ -278,6 +302,12 @@ internal sealed class Toolbar(VisualizerApp app)
             ImGui.SliderFloat("##autoCrossfadeSeconds", ref settings.AutoCrossfadeSeconds, 2f, 60f, "perioda %.0f s");
         }
 
+        MixerLabel("Obměňovat");
+        ImGui.BeginDisabled(!settings.AutoCrossfade);
+        ImGui.Checkbox("##autoMixRefresh", ref settings.AutoMixRefresh);
+        ImGui.EndDisabled();
+        Tooltip($"Při automatickém crossfaderu se úplně skrytá animace vymění za jinou ({FamilyFilterLabel(settings.AutoSwitchFamily)}),\ntakže každý návrat crossfaderu přinese novou kombinaci.");
+
         ImGui.End();
     }
 
@@ -305,19 +335,34 @@ internal sealed class Toolbar(VisualizerApp app)
         ImGui.End();
     }
 
-    private static void AnimationCombo(string id, int selected, Action<int> select, float width, bool numbered)
+    /// <summary>Seznam animací seskupený podle rodin, nahoře volba „Náhodně“.</summary>
+    private static void AnimationCombo(string id, int selected, Action<int> select, Action random, float width, bool numbered)
     {
         var all = VisualizationCatalog.All;
         ImGui.SetNextItemWidth(width);
-        if (!ImGui.BeginCombo(id, selected >= 0 ? all[selected].Name : "—"))
+        if (!ImGui.BeginCombo(id, selected >= 0 ? all[selected].Name : "—", ImGuiComboFlags.HeightLargest))
         {
             return;
         }
 
+        if (ImGui.Selectable(numbered ? "Náhodně    (R)" : "Náhodně"))
+        {
+            random();
+        }
+
+        Tooltip("Náhodná animace z výběru pro střídání (nabídka „…“)");
+
+        string? family = null;
         for (int i = 0; i < all.Count; i++)
         {
-            string label = numbered && i < 9 ? $"{i + 1}    {all[i].Name}" : all[i].Name;
-            if (ImGui.Selectable(label, i == selected))
+            if (all[i].Family != family)
+            {
+                family = all[i].Family;
+                ImGui.SeparatorText(VisualizationCatalog.FamilyLabel(family));
+            }
+
+            string label = numbered && i < 9 ? $"{i + 1}    {all[i].Preset}" : all[i].Preset;
+            if (ImGui.Selectable($"{label}##{i}", i == selected))
             {
                 select(i);
             }
@@ -330,6 +375,9 @@ internal sealed class Toolbar(VisualizerApp app)
 
         ImGui.EndCombo();
     }
+
+    private static string FamilyFilterLabel(string family) =>
+        string.IsNullOrEmpty(family) ? "Všechny animace" : VisualizationCatalog.FamilyLabel(family);
 
     private static bool ToggleButton(string label, bool active)
     {
